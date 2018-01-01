@@ -26,6 +26,16 @@ if (!config.FB_APP_SECRET) {
 if (!config.SERVER_URL) { //used for ink to static files
 	throw new Error('missing SERVER_URL');
 }
+if (!config.SENDGRID_API_KEY) { //used for sending emails
+	throw new Error('missing SENDGRID_API_KEY');
+}
+if (!config.EMAIL_FROM) { //used for sending emails
+	throw new Error('missing EMAIL_FROM');
+}
+if (!config.EMAIL_TO) { //used for sending emails
+	throw new Error('missing EMAIL_TO');
+}
+
 
 
 
@@ -81,9 +91,9 @@ app.get('/webhook/', function (req, res) {
  */
 app.post('/webhook/', function (req, res) {
 	var data = req.body;
-	console.log(JSON.stringify(data));
+	console.log('jjjjj', JSON.stringify(data));
 
-console.log('pppp', data)
+console.log('ppeeeepp', data)
 
 	// Make sure this is a page subscription
 	if (data.object == 'page') {
@@ -98,6 +108,7 @@ console.log('pppp', data)
 				if (messagingEvent.optin) {
 					receivedAuthentication(messagingEvent);
 				} else if (messagingEvent.message) {
+					console.log("MEEEE", messagingEvent)
 					receivedMessage(messagingEvent);
 				} else if (messagingEvent.delivery) {
 					receivedDeliveryConfirmation(messagingEvent);
@@ -156,6 +167,7 @@ console.log('eee', event)
 
 
 	if (messageText) {
+		console.log(('xxxxxxxxx', messageText));
 		//send message to api.ai
 		sendToApiAi(senderID, messageText);
 	} else if (messageAttachments) {
@@ -183,27 +195,51 @@ function handleEcho(messageId, appId, metadata) {
 }
 
 function handleApiAiAction(sender, action, responseText, contexts, parameters) {
+	console.log("handleApiAiAction", responseText)
 	switch (action) {
-		// case "job-enquiry":
-		// 	let replies = [
-	  //     {
-	  //       "content_type":"text",
-	  //       "title":"Accountant",
-	  //       "payload":"<Accountant>",
-	  //     },
-	  //     {
-		// 			"content_type":"text",
-	  //       "title":"Sales",
-	  //       "payload":"Sales"
-	  //     },
-	  //     {
-	  //       "content_type":"text",
-	  //       "title":"Not interested",
-	  //       "payload":"Not interested"
-	  //     }
-	  //   ];
-		// 	sendQuickReply(sender, responseText, replies);
-		//   break;
+		case "detailed-application":
+			if(isDefined(contexts[0]) && contexts[0]. name === job_application && contexts[0].parameters) {
+				let phone_number = (isDefined(contexts[0].parameters['phone-number'])
+				&& contexts[0].parameters['phone-number'] !== '') ? contexts[0].parameters['phone-number'] : '';
+				let previous_job = (isDefined(contexts[0].parameters['previous-job'])
+				&& contexts[0].parameters['previous-job'] !== '') ? contexts[0].parameters['previous-job'] : '';
+				let user_name = (isDefined(contexts[0].parameters['user-name'])
+				&& contexts[0].parameters['user-name'] !== '') ? contexts[0].parameters['user-name'] : '';
+				let years_of_experience = (isDefined(contexts[0].parameters['years-of-experience'])
+				&& contexts[0].parameters['years-of-experience'] !== '') ? contexts[0].parameters['years-of-experience'] : '';
+				let job_vacancy = (isDefined(contexts[0].parameters['job-vacancy'])
+				&& contexts[0].parameters['job-vacancy'] !== '') ? contexts[0].parameters['job-vacancy'] : '';
+
+				if(phone_number !== '' && user_name !== '' && previous_job !== '' && years_of_experience !== '') {
+					let emailContent  = 'A new job enquiry from ' + user_name + ' for the job: ' + job_vacancy +
+															'.<br> Previous job position: ' + previous_job + '.' +
+															'.<br> Years of experience: ' + years_of_experience + '.' +
+															'.<br> Phone number: ' + phone_number + '.'
+					sendEmail('New job application', emailContent);
+				}
+			}
+			sendTextMessage(sender, responseText);
+		  break;
+		case "job-enquiry":
+			let replies = [
+	      {
+	        "content_type":"text",
+	        "title":"Accountant",
+	        "payload":"<Accountant>",
+	      },
+	      {
+					"content_type":"text",
+	        "title":"Sales",
+	        "payload":"Sales"
+	      },
+	      {
+	        "content_type":"text",
+	        "title":"Not interested",
+	        "payload":"Not interested"
+	      }
+	    ];
+			sendQuickReply(sender, responseText, replies);
+		  break;
 		default:
 			//unhandled action, just send back the text
 			sendTextMessage(sender, responseText);
@@ -287,6 +323,7 @@ function handleCardMessages(messages, sender) {
 
 
 function handleApiAiResponse(sender, response) {
+	console.log('kkkkkkkkkk', response);
 	let responseText = response.result.fulfillment.speech;
 	let responseData = response.result.fulfillment.data;
 	let messages = response.result.fulfillment.messages;
@@ -296,40 +333,44 @@ function handleApiAiResponse(sender, response) {
 
 	sendTypingOff(sender);
 
-	if (isDefined(messages) && (messages.length == 1 && messages[0].type != 0 || messages.length > 1)) {
-		let timeoutInterval = 1100;
-		let previousType ;
-		let cardTypes = [];
-		let timeout = 0;
-		for (var i = 0; i < messages.length; i++) {
+	// if (isDefined(messages) && (messages.length == 1 && messages[0].type != 0 || messages.length > 1)) {
+	// 	console.log('9999999999999', messages)
+	// 	let timeoutInterval = 1100;
+	// 	let previousType ;
+	// 	let cardTypes = [];
+	// 	let timeout = 0;
+	// 	for (var i = 0; i < messages.length; i++) {
+  //
+	// 		if ( previousType == 1 && (messages[i].type != 1 || i == messages.length - 1)) {
+  //
+	// 			timeout = (i - 1) * timeoutInterval;
+	// 			setTimeout(handleCardMessages.bind(null, cardTypes, sender), timeout);
+	// 			cardTypes = [];
+	// 			timeout = i * timeoutInterval;
+	// 			setTimeout(handleMessage.bind(null, messages[i], sender), timeout);
+	// 		} else if ( messages[i].type == 1 && i == messages.length - 1) {
+	// 			cardTypes.push(messages[i]);
+  //               		timeout = (i - 1) * timeoutInterval;
+  //               		setTimeout(handleCardMessages.bind(null, cardTypes, sender), timeout);
+  //               		cardTypes = [];
+	// 		} else if ( messages[i].type == 1 ) {
+	// 			cardTypes.push(messages[i]);
+	// 		} else {
+	// 			timeout = i * timeoutInterval;
+	// 			setTimeout(handleMessage.bind(null, messages[i], sender), timeout);
+	// 		}
+  //
+	// 		previousType = messages[i].type;
+  //
+	// 	}
+	// } else
 
-			if ( previousType == 1 && (messages[i].type != 1 || i == messages.length - 1)) {
-
-				timeout = (i - 1) * timeoutInterval;
-				setTimeout(handleCardMessages.bind(null, cardTypes, sender), timeout);
-				cardTypes = [];
-				timeout = i * timeoutInterval;
-				setTimeout(handleMessage.bind(null, messages[i], sender), timeout);
-			} else if ( messages[i].type == 1 && i == messages.length - 1) {
-				cardTypes.push(messages[i]);
-                		timeout = (i - 1) * timeoutInterval;
-                		setTimeout(handleCardMessages.bind(null, cardTypes, sender), timeout);
-                		cardTypes = [];
-			} else if ( messages[i].type == 1 ) {
-				cardTypes.push(messages[i]);
-			} else {
-				timeout = i * timeoutInterval;
-				setTimeout(handleMessage.bind(null, messages[i], sender), timeout);
-			}
-
-			previousType = messages[i].type;
-
-		}
-	} else if (responseText == '' && !isDefined(action)) {
+	if (responseText == '' && !isDefined(action)) {
 		//api ai could not evaluate input.
 		console.log('Unknown query' + response.result.resolvedQuery);
 		sendTextMessage(sender, "I'm not sure what you want. Can you be more specific?");
 	} else if (isDefined(action)) {
+		console.log('handleApiAiResponse', responseText)
 		handleApiAiAction(sender, action, responseText, contexts, parameters);
 	} else if (isDefined(responseData) && isDefined(responseData.facebook)) {
 		try {
@@ -345,7 +386,7 @@ function handleApiAiResponse(sender, response) {
 }
 
 function sendToApiAi(sender, text) {
-
+console.log('text=======', text)
 	sendTypingOn(sender);
 	let apiaiRequest = apiAiService.textRequest(text, {
 		sessionId: sessionIds.get(sender)
@@ -353,6 +394,7 @@ function sendToApiAi(sender, text) {
 
 	apiaiRequest.on('response', (response) => {
 		if (isDefined(response.result)) {
+			console.log('mmmmmmmmmmmmm');
 			handleApiAiResponse(sender, response);
 		}
 	});
@@ -872,6 +914,21 @@ function verifyRequestSignature(req, res, buf) {
 			throw new Error("Couldn't validate the request signature.");
 		}
 	}
+}
+
+function sendEmail(subject, content) {
+	// using SendGrid's v3 Node.js Library
+// https://github.com/sendgrid/sendgrid-nodejs
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(config.SENDGRID_API_KEY);
+const msg = {
+  to: config.EMAIL_TO,
+  from: config.EMAIL_FROM,
+  subject: subject,
+  text: content,
+  html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+};
+sgMail.send(msg);
 }
 
 function isDefined(obj) {

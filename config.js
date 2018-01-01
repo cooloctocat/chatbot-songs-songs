@@ -4,4 +4,7 @@ module.exports = {
     API_AI_CLIENT_ACCESS_TOKEN: '6827a738d4384fbaa98a713ada44cd1b',
     FB_APP_SECRET: 'ed071c7b3e77ed617dba3e1002c1bf84',
     SERVER_URL: "https://songsandsongs.herokuapp.com/",
+    SENDGRID_API_KEY: "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",
+    EMAIL_FROM: 'bettychchow@gmail.com',
+    EMAIL_TO: 'bettychchow@gmail.com'
 };
