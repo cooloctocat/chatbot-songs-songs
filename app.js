@@ -83,7 +83,7 @@ app.post('/webhook/', function (req, res) {
 	var data = req.body;
 	console.log(JSON.stringify(data));
 
-
+console.log('pppp', data)
 
 	// Make sure this is a page subscription
 	if (data.object == 'page') {
@@ -124,7 +124,7 @@ app.post('/webhook/', function (req, res) {
 
 
 function receivedMessage(event) {
-
+console.log('eee', event)
 	var senderID = event.sender.id;
 	var recipientID = event.recipient.id;
 	var timeOfMessage = event.timestamp;
@@ -184,26 +184,26 @@ function handleEcho(messageId, appId, metadata) {
 
 function handleApiAiAction(sender, action, responseText, contexts, parameters) {
 	switch (action) {
-		case "job-enquiry":
-			let replies = [
-	      {
-	        "content_type":"text",
-	        "title":"Accountant",
-	        "payload":"<Accountant>",
-	      },
-	      {
-					"content_type":"text",
-	        "title":"Sales",
-	        "payload":"Sales"
-	      },
-	      {
-	        "content_type":"text",
-	        "title":"Not interested",
-	        "payload":"Not interested"
-	      }
-	    ];
-			sendQuickReply(sender, responseText, replies);
-		  break;
+		// case "job-enquiry":
+		// 	let replies = [
+	  //     {
+	  //       "content_type":"text",
+	  //       "title":"Accountant",
+	  //       "payload":"<Accountant>",
+	  //     },
+	  //     {
+		// 			"content_type":"text",
+	  //       "title":"Sales",
+	  //       "payload":"Sales"
+	  //     },
+	  //     {
+	  //       "content_type":"text",
+	  //       "title":"Not interested",
+	  //       "payload":"Not interested"
+	  //     }
+	  //   ];
+		// 	sendQuickReply(sender, responseText, replies);
+		//   break;
 		default:
 			//unhandled action, just send back the text
 			sendTextMessage(sender, responseText);
