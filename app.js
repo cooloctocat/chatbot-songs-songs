@@ -198,7 +198,7 @@ function handleApiAiAction(sender, action, responseText, contexts, parameters) {
 	console.log("handleApiAiAction", responseText)
 	switch (action) {
 		case "detailed-application":
-			if(isDefined(contexts[0]) && contexts[0]. name === job_application && contexts[0].parameters) {
+			if(isDefined(contexts[0]) && contexts[0].name === "job_application" && contexts[0].parameters) {
 				let phone_number = (isDefined(contexts[0].parameters['phone-number'])
 				&& contexts[0].parameters['phone-number'] !== '') ? contexts[0].parameters['phone-number'] : '';
 				let previous_job = (isDefined(contexts[0].parameters['previous-job'])
