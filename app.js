@@ -197,6 +197,33 @@ function handleEcho(messageId, appId, metadata) {
 function handleApiAiAction(sender, action, responseText, contexts, parameters) {
 	console.log("handleApiAiAction", responseText)
 	switch (action) {
+		case "faq-delivery":
+			sendTextMessage(sender, responseText);
+			sendTypingOn(sender);
+
+			//ask what user want sto do next
+			setTimeout(function() {
+				let buttons = [
+          {
+            "type": "web_url",
+            "url": "https://www.messenger.com",
+            "title": "Visit Our Website"
+          },
+          {
+						"type": "phone_number",
+            "title": "Call Us",
+            "payload": "4082345678"
+          },
+          {
+						"type": "postback",
+					  "title": "Keep On Chatting",
+					  "payload": "CHAT"
+				  }
+        ];
+				sendButtonMessage(sender, "What would you like to do next?", buttons)
+			}, 3000);
+
+		  break;
 		case "detailed-application":
 			if(isDefined(contexts[0]) && contexts[0].name === "job_application" && contexts[0].parameters) {
 				let phone_number = (isDefined(contexts[0].parameters['phone-number'])
@@ -926,7 +953,7 @@ const msg = {
   from: config.EMAIL_FROM,
   subject: subject,
   text: content,
-  html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+  // html: '<strong>and easy to do anywhere, even with Node.js</strong>',
 };
 sgMail.send(msg);
 }
