@@ -6,5 +6,15 @@ module.exports = {
     SERVER_URL: "https://songsandsongs.herokuapp.com/",
     SENDGRID_API_KEY: "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",
     EMAIL_FROM: 'bettychchow@gmail.com',
-    EMAIL_TO: 'bettychchow@gmail.com'
+    EMAIL_TO: 'bettychchow@gmail.com',
+    WEATHEER_API_KEY: "60d8e5f1e56a0c3913fe5cbddbbf4c37",
+    PG_CONFIG: {
+      user: "sxzguixtnywjqu",
+      database: "ddn6568q9qh3ep",
+      password: "65766b0a308a0011a51d32e6658dd00c862e27fb1488c2202b3f4d1fbcca1487",
+      host: "ec2-54-235-148-19.compute-1.amazonaws.com",
+      port: 5432,
+      max: 10,
+      idleTimeoutMillis: 30000,
+    },
 };

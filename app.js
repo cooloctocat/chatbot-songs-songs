@@ -8,6 +8,10 @@ const bodyParser = require('body-parser');
 const request = require('request');
 const app = express();
 const uuid = require('uuid');
+const pg = require('pg');
+
+
+pg.defaults.ssl = true;
 
 
 // Messenger API parameters
@@ -34,6 +38,12 @@ if (!config.EMAIL_FROM) { //used for sending emails
 }
 if (!config.EMAIL_TO) { //used for sending emails
 	throw new Error('missing EMAIL_TO');
+}
+if (!config.WEATHEER_API_KEY) { //used for sending emails
+	throw new Error('missing WEATHEER_API_KEY');
+}
+if (!config.PG_CONFIG) {
+	throw new Error('missing PG_CONFIG'); //postgresql config object
 }
 
 
@@ -108,11 +118,11 @@ console.log('ppeeeepp', data)
 				if (messagingEvent.optin) {
 					receivedAuthentication(messagingEvent);
 				} else if (messagingEvent.message) {
-					console.log("MEEEE", messagingEvent)
 					receivedMessage(messagingEvent);
 				} else if (messagingEvent.delivery) {
 					receivedDeliveryConfirmation(messagingEvent);
 				} else if (messagingEvent.postback) {
+					console.log("PPPPPP", messagingEvent)
 					receivedPostback(messagingEvent);
 				} else if (messagingEvent.read) {
 					receivedMessageRead(messagingEvent);
@@ -197,6 +207,31 @@ function handleEcho(messageId, appId, metadata) {
 function handleApiAiAction(sender, action, responseText, contexts, parameters) {
 	console.log("handleApiAiAction", responseText)
 	switch (action) {
+		case "get-current-weather":
+		  if(parameters.hasOwnProperty("geo-city") && parameters["geo-city"] !== "") {
+				request({
+          uri: "http://api.openweathermap.org/data/2.5/weather",
+					qs: {
+						appid: config.WEATHEER_API_KEY,
+						q: parameters["geo-city"]
+					}
+         }, function(error, response, body) {
+            if(!error && response.statusCode === 200) {
+							let weather = JSON.parse(body);
+							if(weather.hasOwnProperty("weather")) {
+								let reply = `${responseText} ${weather["weather"][0]["description"]}`;
+								sendTextMessage(sender, reply);
+							} else {
+									sendTextMessage(sender, `No weather report avaialable for ${parameters["geo-city"]}`)
+						  }
+						} else {
+							console.error(response.error);
+						}
+       });
+			} else {
+				sendTextMessage(senderID, responseText)
+			}
+		  break;
 		case "faq-delivery":
 			sendTextMessage(sender, responseText);
 			sendTypingOn(sender);
@@ -225,7 +260,9 @@ function handleApiAiAction(sender, action, responseText, contexts, parameters) {
 
 		  break;
 		case "detailed-application":
-			if(isDefined(contexts[0]) && contexts[0].name === "job_application" && contexts[0].parameters) {
+			if(isDefined(contexts[0]) &&
+			(contexts[0].name === "job_application" || contexts[0].name === "job-application-details_dialog_context")
+			&& contexts[0].parameters) {
 				let phone_number = (isDefined(contexts[0].parameters['phone-number'])
 				&& contexts[0].parameters['phone-number'] !== '') ? contexts[0].parameters['phone-number'] : '';
 				let previous_job = (isDefined(contexts[0].parameters['previous-job'])
@@ -237,22 +274,46 @@ function handleApiAiAction(sender, action, responseText, contexts, parameters) {
 				let job_vacancy = (isDefined(contexts[0].parameters['job-vacancy'])
 				&& contexts[0].parameters['job-vacancy'] !== '') ? contexts[0].parameters['job-vacancy'] : '';
 
-				if(phone_number !== '' && user_name !== '' && previous_job !== '' && years_of_experience !== '') {
+				if((phone_number === '') && (user_name !== '') && (previous_job !== '') && (years_of_experience === '')) {
+					let replies = [
+			      {
+			        "content_type":"text",
+			        "title":"Less than 1 year",
+			        "payload":"Less than 1 year",
+			      },
+			      {
+							"content_type":"text",
+			        "title":"Less than 10 years",
+			        "payload":"Less than 10 years"
+			      },
+			      {
+			        "content_type":"text",
+			        "title":"More than 10 years",
+			        "payload":"More than 10 years"
+			      }
+			    ];
+
+					sendQuickReply(sender, responseText, replies);
+
+				} else if(phone_number !== '' && user_name !== '' && previous_job !== '' && years_of_experience !== '') {
 					let emailContent  = 'A new job enquiry from ' + user_name + ' for the job: ' + job_vacancy +
 															'.<br> Previous job position: ' + previous_job + '.' +
 															'.<br> Years of experience: ' + years_of_experience + '.' +
 															'.<br> Phone number: ' + phone_number + '.'
 					sendEmail('New job application', emailContent);
+					sendTextMessage(sender, responseText);
+				} else {
+					sendTextMessage(sender, responseText);
 				}
 			}
-			sendTextMessage(sender, responseText);
+
 		  break;
 		case "job-enquiry":
 			let replies = [
 	      {
 	        "content_type":"text",
 	        "title":"Accountant",
-	        "payload":"<Accountant>",
+	        "payload":"Accountant",
 	      },
 	      {
 					"content_type":"text",
@@ -731,32 +792,70 @@ function sendAccountLinking(recipientId) {
 
 
 function greetUserText(userId) {
-	//first read user firstname
-	request({
-		uri: 'https://graph.facebook.com/v2.7/' + userId,
-		qs: {
-			access_token: config.FB_PAGE_TOKEN
-		}
+  //first read user firstname
+  request({
+    uri: 'https://graph.facebook.com/v2.7/' + userId,
+    qs: {
+      access_token: config.FB_PAGE_TOKEN
+    }
 
-	}, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+console.log('yyyyyyyyyyyyyyyyyyy')
+      var user = JSON.parse(body);
+      console.log("getUserData:" + user);
 
-			var user = JSON.parse(body);
+      if (user.first_name) {
 
-			if (user.first_name) {
-				console.log("FB user: %s %s, %s",
-					user.first_name, user.last_name, user.gender);
+        var pool = new pg.Pool(config.PG_CONFIG);
+        pool.connect(function(err, client, done) {
+	        if (err) {
+	        	return console.error('Error acquiring client', err.stack);
+	        }
+	        var rows = [];
+console.log('qqqqqqqqqqqqqqqq')
+	        client.query(`SELECT id FROM users WHERE fb_id='${userId}' LIMIT 1`,
+		        function(err, result) {
+			        console.log('query resulttttttttttttttttttt ' + result);
+			        if (err) {
+			        	console.log('Query error: ' + err);
+		        	} else {
+		      	  	console.log('rows: ' + result.rows.length);
+			        	if (result.rows.length === 0) {
+				      	  let sql = 'INSERT INTO users (fb_id, first_name, last_name, profile_pic, ' +
+				    	  	  'locale, timezone, gender) VALUES ($1, $2, $3, $4, $5, $6, $7)';
+				       	  console.log('sql: ' + sql);
+			    	  	  client.query(sql,
+				      	  	[
+				      	  		userId,
+				      	  		user.first_name,
+				      	  		user.last_name,
+				      	  		user.profile_pic,
+				      		  	user.locale,
+					      	  	user.timezone,
+					        		user.gender
+					         	]);
+				         }
+			         }
+		       });
+          done();
+        });
+        pool.end();
 
-				sendTextMessage(userId, "Welcome " + user.first_name + '!');
-			} else {
-				console.log("Cannot get data for fb user with id",
-					userId);
-			}
-		} else {
-			console.error(response.error);
-		}
+        // console.log("FB user: %s %s, %s",
+        // 	user.first_name, user.last_name, user.gender);
 
-	});
+        sendTextMessage(userId, "Welcome " + user.first_name + '! ' + "I can asnwer FAQs for you" + " and I can perform job interviews.");
+      }
+			// else {
+      //   console.log("Cannot get data for fb user with id",
+      //     userId);
+      // }
+    }
+		// else {
+    //   console.error(response.error);
+    // }
+  });
 }
 
 /*
@@ -808,8 +907,19 @@ function receivedPostback(event) {
 	// The 'payload' param is a developer-defined field which is set in a postback
 	// button for Structured Messages.
 	var payload = event.postback.payload;
-
+console.log('OOOOOOO', payload)
 	switch (payload) {
+		case "JOB_APPLY":
+		  // get feedback with new jobs
+		  sendToApiAi(senderID, "job openings");
+			break;
+		case "GET_STARTED":
+		   greetUserText(senderID);
+			 break;
+		case "CHAT":
+		  let message = "Do you want to know more about your order?"
+		  sendTextMessage(senderID, message);
+			break;
 		default:
 			//unindentified payload
 			sendTextMessage(senderID, "I'm not sure what you want. Can you be more specific?");
