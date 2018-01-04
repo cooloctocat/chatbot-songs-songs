@@ -801,7 +801,6 @@ function greetUserText(userId) {
 
   }, function (error, response, body) {
     if (!error && response.statusCode == 200) {
-console.log('yyyyyyyyyyyyyyyyyyy')
       var user = JSON.parse(body);
       console.log("getUserData:" + user);
 
@@ -812,11 +811,12 @@ console.log('yyyyyyyyyyyyyyyyyyy')
 	        if (err) {
 	        	return console.error('Error acquiring client', err.stack);
 	        }
+					console.log('cccccccccccccc', client);
 	        var rows = [];
-console.log('qqqqqqqqqqqqqqqq')
+
 	        client.query(`SELECT id FROM users WHERE fb_id='${userId}' LIMIT 1`,
 		        function(err, result) {
-			        console.log('query resulttttttttttttttttttt ' + result);
+			        console.log('query result ' + result);
 			        if (err) {
 			        	console.log('Query error: ' + err);
 		        	} else {
@@ -834,9 +834,10 @@ console.log('qqqqqqqqqqqqqqqq')
 				      		  	user.locale,
 					      	  	user.timezone,
 					        		user.gender
-					         	]);
+					         	]
+									 );
 				         }
-			         }
+			        }
 		       });
           done();
         });
@@ -845,7 +846,7 @@ console.log('qqqqqqqqqqqqqqqq')
         // console.log("FB user: %s %s, %s",
         // 	user.first_name, user.last_name, user.gender);
 
-        sendTextMessage(userId, "Welcome " + user.first_name + '! ' + "I can asnwer FAQs for you" + " and I can perform job interviews.");
+        sendTextMessage(userId, "Welcome " + user.first_name + '! ' + "I can answer FAQs for you" + " and I can perform job interviews.");
       }
 			// else {
       //   console.log("Cannot get data for fb user with id",
